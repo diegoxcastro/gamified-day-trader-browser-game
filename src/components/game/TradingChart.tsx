@@ -24,6 +24,7 @@ import { ASSET_MAP, formatPrice } from "@/lib/game/assets";
 
 export interface ChartMarker {
   time: number;
+  symbol: string;
   side: "long" | "short" | "exit";
   text: string;
   win?: boolean;
@@ -216,7 +217,16 @@ export default function TradingChart({
       color: c.close >= c.open ? "#26a69a55" : "#ef535055",
     });
 
-    if (symbolChanged || Math.abs(candles.length - lastLenRef.current) > 2) {
+    // Defense in depth: if the incoming price is far away from what the series
+    // currently draws, the series still holds data from another asset (e.g. a
+    // stale (symbol, candles) pair) — force a full reset instead of patching bars.
+    const lastBar = candles[candles.length - 1];
+    const drawn = cs.lastValueData(true);
+    const drawnLast = drawn.noData ? null : drawn.price;
+    const dataDiverged =
+      drawnLast != null && Math.abs(lastBar.close - drawnLast) > Math.max(1e-9, Math.abs(drawnLast)) * 0.5;
+
+    if (symbolChanged || Math.abs(candles.length - lastLenRef.current) > 2 || dataDiverged) {
       cs.setData(candles.map(toBar));
       vol.setData(candles.map(toVol));
       chart.timeScale().scrollToRealTime();
@@ -306,6 +316,7 @@ export default function TradingChart({
     const api = markersApiRef.current;
     if (!api) return;
     const ms: SeriesMarker<Time>[] = markers
+      .filter((m) => m.symbol === symbol)
       .slice()
       .sort((a, b) => a.time - b.time)
       .map((m) => ({
@@ -317,7 +328,7 @@ export default function TradingChart({
         size: 1,
       }));
     api.setMarkers(ms);
-  }, [markers]);
+  }, [markers, symbol]);
 
   const last = candles[candles.length - 1];
   const first = candles.find((c) => c.time >= dayStartTime) ?? candles[0];

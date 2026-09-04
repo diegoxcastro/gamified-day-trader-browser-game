@@ -320,7 +320,7 @@ export function useGame(initialPlayer: PlayerState, initialMissions: DbMission[]
       setClosedTrades((prev) => [trade, ...prev]);
       setMarkers((prev) => [
         ...prev,
-        { time: now, side: "exit", text: `${isWin ? "+" : ""}${pnl.toFixed(0)}`, win: isWin },
+        { time: now, side: "exit", text: `${isWin ? "+" : ""}${pnl.toFixed(0)}`, win: isWin, symbol: p.symbol },
       ]);
       pendingTradesRef.current.push(trade);
       dayTradesRef.current.push(trade);
@@ -411,7 +411,7 @@ export function useGame(initialPlayer: PlayerState, initialMissions: DbMission[]
       const updated = { ...pl, stats: career };
       playerRef.current = updated;
       setPlayer(updated);
-      setMarkers((prev) => [...prev, { time: eng.time, side: order.side, text: order.side === "long" ? "C" : "V" }]);
+      setMarkers((prev) => [...prev, { time: eng.time, side: order.side, text: order.side === "long" ? "C" : "V", symbol: sym }]);
       evaluateMissions(nextDs, career);
       dirtyRef.current = true;
       return null;
@@ -610,12 +610,16 @@ export function useGame(initialPlayer: PlayerState, initialMissions: DbMission[]
     return () => clearInterval(iv);
   }, [paused, dayOver, closePositionInternal, finishDay, flushSync, pushToast, unrealizedFor]);
 
-  // update candles immediately on symbol switch
-  useEffect(() => {
+  // Switch the active asset atomically: symbol + its candles + book update in the
+  // same render, so the chart never sees a (new symbol, old asset's candles) pair.
+  const selectSymbol = useCallback((sym: string) => {
     const eng = engineRef.current!;
-    setCandles(eng.snapshot(symbol).candles);
-    setBook(eng.orderBook(symbol));
-  }, [symbol]);
+    if (symbolRef.current === sym) return;
+    symbolRef.current = sym;
+    setSymbol(sym);
+    setCandles(eng.snapshot(sym).candles);
+    setBook(eng.orderBook(sym));
+  }, []);
 
   // ------- shop -------
   const buyItem = useCallback(
@@ -666,7 +670,7 @@ export function useGame(initialPlayer: PlayerState, initialMissions: DbMission[]
     player,
     missions,
     symbol,
-    setSymbol,
+    selectSymbol,
     positions,
     closedTrades,
     dayStats,

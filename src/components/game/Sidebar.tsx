@@ -239,7 +239,7 @@ export function OrderPanel({ game }: { game: GameApi }) {
 }
 
 export function Watchlist({ game }: { game: GameApi }) {
-  const { prices, dayOpens, symbol, setSymbol, unlockedSymbols, player } = game;
+  const { prices, dayOpens, symbol, selectSymbol, unlockedSymbols, player } = game;
   return (
     <div className="rounded-lg border border-[#1f2733] bg-[#0f131a] p-2">
       <h3 className="mb-1 px-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Watchlist</h3>
@@ -252,7 +252,7 @@ export function Watchlist({ game }: { game: GameApi }) {
             <button
               key={a.symbol}
               disabled={!unlocked}
-              onClick={() => setSymbol(a.symbol)}
+              onClick={() => selectSymbol(a.symbol)}
               className={`flex items-center justify-between rounded px-2 py-1.5 text-left text-xs transition ${symbol === a.symbol ? "bg-sky-500/10 ring-1 ring-sky-500/40" : "hover:bg-white/5"} ${!unlocked ? "opacity-40" : ""}`}
               title={unlocked ? a.description : `Desbloqueia no nível ${a.unlockLevel}`}
             >
